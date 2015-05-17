@@ -1,0 +1,46 @@
+#PBS -N xTas_cache
+#PBS -q q_serial
+#PBS -lnodes=1
+#PBS -l walltime=24:00:00
+
+
+## Example usage:
+# Test: qsub -v SET=18096,TASK=alpino,NPROCESS=1 -l walltime=0:05:00 ../jobs/cache.qjob
+# Go: qsub -t 1-25 -v SET=18096,TASK=alpino ../jobs/cache.qjob
+##
+
+source ~/xtas-env/bin/activate
+ssh -f -nNT -L 9200:192.168.144.100:9200 amcat.nl
+
+# what do we want to parse?
+
+if [ ! -n "$SET" ] || [ ! -n "$TASK" ]; then
+    echo Please set setid and task using e.g. qsub -v SET=12345,TASK=\"alpino sources_nl\"
+    exit 1
+fi
+
+if [ ! -n "NPROCESS" ]; then
+   echo "NPROCESS not specified, assuming default 15"
+   export NPROCESS=15
+fi
+
+# GO!
+
+if [ "$NPROCESS" = 1 ]
+then
+  echo RUNNING SINGLE PROCESS: $SET $TASK
+  python ~/xtas/cache.py --norepeat $SET $TASK
+else
+  echo RUNNING $NPROCESS PROCESSES: $SET $TASK
+  for i in `seq 1 $NPROCESS`;
+  do
+    sleep 5
+    python ~/xtas/cache.py $SET $TASK &
+    echo STARTED $!
+  done
+  wait
+fi
+
+echo ALL DONE
+
+exit 0
